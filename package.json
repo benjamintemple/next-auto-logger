@@ -1,6 +1,6 @@
 {
   "name": "next-auto-logger",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Instant, enterprise-grade logging for Next.js applications",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
