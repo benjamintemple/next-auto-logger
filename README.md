@@ -1,10 +1,8 @@
 # next-auto-logger
 
 [![npm version](https://img.shields.io/npm/v/next-auto-logger)](https://www.npmjs.com/package/next-auto-logger)
-[![npm downloads](https://img.shields.io/npm/dm/next-auto-logger)](https://www.npmjs.com/package/next-auto-logger)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Bundle Size](https://img.shields.io/bundlephobia/minzip/next-auto-logger)](https://bundlephobia.com/package/next-auto-logger)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/benjamintemple/next-auto-logger/ci.yml?branch=main)](https://github.com/benjamintemple/next-auto-logger/actions)
 
 Instant, enterprise-grade logging for Next.js applications - built on [Pino](https://github.com/pinojs/pino).
