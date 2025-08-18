@@ -9,7 +9,7 @@
 This section gets you up and running immediately. Jump to "Getting Started" below for detailed setup.
 
 ```bash
-# Quick setup with CLI
+# Quick setup with CLI (automatically installs all dependencies)
 npx next-auto-logger init
 
 # Add to any component
@@ -31,8 +31,6 @@ fields @timestamp, module, msg
 ```
 
 4. Be amazed that it actually works
-
----
 
 ## 📚 Getting Started
 
@@ -84,13 +82,7 @@ logger.info("User started checkout", { userId: 123, cartValue: 89.99 });
 
 ### 🚀 30-Second Setup (Seriously)
 
-#### 1. Install
-
-```bash
-npm install next-auto-logger pino pino-pretty
-```
-
-#### 2. Quick Setup with CLI (Recommended)
+#### 1. Quick Setup with CLI (Recommended)
 
 ```bash
 # Initialize next-auto-logger in your project
@@ -105,7 +97,9 @@ npx next-auto-logger init
 # ✅ Create example files
 ```
 
-#### 3. Start logging anywhere
+**The CLI handles everything** - no need to manually install packages or create files. Just run the command and you're ready to log!
+
+#### 2. Start logging anywhere
 
 ```typescript
 import { createChildLogger } from "next-auto-logger";
@@ -134,7 +128,7 @@ export default function LoginPage() {
 }
 ```
 
-#### 4. Deploy to AWS and search your logs like a database
+#### 3. Deploy to AWS and search your logs like a database
 
 ```sql
 -- Find all login failures in CloudWatch
@@ -246,17 +240,22 @@ next-auto-logger init
 
 The interactive setup wizard will:
 
-1. **Detect your Next.js setup** - Automatically identifies App Router vs Pages Router
-2. **Create API endpoints** - Generates the correct API handler for your router type
-3. **Configure options** - Interactive prompts for:
+1. **Install missing packages** - Automatically detects and installs required dependencies:
+   - `next-auto-logger` - The main logging library
+   - `pino` - High-performance JSON logger
+   - `pino-pretty` - Pretty-print logs in development
+2. **Detect package manager** - Works with npm, yarn, or pnpm automatically
+3. **Detect your Next.js setup** - Automatically identifies App Router vs Pages Router
+4. **Create API endpoints** - Generates the correct API handler for your router type
+5. **Configure options** - Interactive prompts for:
    - API endpoint path (default: `/api/logs`)
    - Enable automatic request interceptors
    - Include request/response headers in logs
    - Include request/response bodies in logs
    - Set default log level for production
    - Create example usage file
-4. **Environment setup** - Creates `.env.local` with optimal settings
-5. **Generate examples** - Creates `logger-example.ts` with usage patterns
+6. **Environment setup** - Creates `.env.local` with optimal settings
+7. **Generate examples** - Creates `logger-example.ts` with usage patterns
 
 #### CLI Output Example
 
@@ -264,6 +263,21 @@ The interactive setup wizard will:
 $ npx next-auto-logger init
 
 🚀 Welcome to next-auto-logger setup!
+
+📦 Detected package manager: npm
+
+⚠️  Missing required packages: next-auto-logger, pino, pino-pretty
+🔍 These packages are required for next-auto-logger to work properly:
+
+   • next-auto-logger - The main logging library
+   • pino - High-performance JSON logger
+   • pino-pretty - Pretty-print logs in development
+
+? Install missing packages using npm? Yes
+
+📦 Installing packages: next-auto-logger pino pino-pretty
+   Running: npm install next-auto-logger pino pino-pretty
+✅ Packages installed successfully
 
 ? Which Next.js router are you using? App Router (Next.js 13+) - Recommended
 ? API endpoint path for client logs: /api/logs
@@ -288,6 +302,10 @@ $ npx next-auto-logger init
    ✓ Log level: info
 
 🚀 Next steps:
+   ✓ All required packages are installed
+   ✓ API endpoint configured
+   ✓ Environment variables set
+
    1. Add this to your app/layout.tsx:
       import { createLogger } from 'next-auto-logger';
       const logger = createLogger({ autoSetupInterceptors: true });
@@ -319,7 +337,12 @@ npx next-auto-logger init
 # Choose "Enable automatic request interceptors" when prompted
 ```
 
-##### Option B: Manual Setup**
+##### Option B: Manual Setup (if you prefer not to use the CLI)
+
+```bash
+# First install packages manually
+npm install next-auto-logger pino pino-pretty
+```
 
 ```typescript
 // 1. Add this to your app/layout.tsx (App Router) or pages/_app.tsx (Pages Router)
@@ -927,12 +950,9 @@ fields @timestamp, module, msg, userId, error
 
 This is the logging solution the Next.js + AWS community has been waiting for. We're here to help:
 
-- 📚 [Complete Documentation](./docs/)
-- 🐛 [Bug Reports](https://github.com/your-org/next-auto-logger/issues)
-- 💬 [Community Discussions](https://github.com/your-org/next-auto-logger/discussions)
-- 📧 [Direct Support](mailto:support@next-auto-logger.com)
+- 🐛 [Bug Reports](https://github.com/benjamintemple/next-auto-logger/issues)
 
-### 🎉 Join the Revolution
+### 🎉 In Conclusion
 
 Stop fighting with logging. Start debugging like a pro.
 

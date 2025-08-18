@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
-const { program } = require('commander');
-const inquirer = require('inquirer');
-const fs = require('fs');
-const path = require('path');
-const chalk = require('chalk');
-const { execSync } = require('child_process');
+import { program } from 'commander';
+import inquirer from 'inquirer';
+import fs from 'fs';
+import path from 'path';
+import chalk from 'chalk';
+import { execSync } from 'child_process';
 
 // Package manager detection and installation utilities
 function detectPackageManager() {
@@ -54,7 +54,7 @@ function installPackages(packageManager, packages) {
 program
   .name("next-auto-logger")
   .description("Setup next-auto-logger in your Next.js project")
-  .version("1.1.0");
+  .version("1.1.5");
 program
   .command("init")
   .description("Initialize next-auto-logger in your project")
@@ -104,19 +104,37 @@ program
 
     if (requiredPackages.length > 0) {
       console.log(chalk.yellow(`⚠️  Missing required packages: ${requiredPackages.join(', ')}`));
+      console.log(chalk.blue('🔍 These packages are required for next-auto-logger to work properly:\n'));
       
-      const installConfirm = await inquirer.prompt([{
-        type: 'confirm',
-        name: 'install',
-        message: `Install missing packages using ${packageManager}?`,
-        default: true
-      }]);
+      requiredPackages.forEach(pkg => {
+        if (pkg === 'next-auto-logger') {
+          console.log(`   • ${chalk.cyan(pkg)} - The main logging library`);
+        } else if (pkg === 'pino') {
+          console.log(`   • ${chalk.cyan(pkg)} - High-performance JSON logger`);
+        } else if (pkg === 'pino-pretty') {
+          console.log(`   • ${chalk.cyan(pkg)} - Pretty-print logs in development`);
+        }
+      });
+      
+      console.log('');
+      
+      try {
+        const installConfirm = await inquirer.prompt([{
+          type: 'confirm',
+          name: 'install',
+          message: `Install missing packages using ${packageManager}?`,
+          default: true
+        }]);
 
-      if (installConfirm.install) {
+        if (installConfirm.install) {
+          installPackages(packageManager, requiredPackages);
+        } else {
+          console.log(chalk.yellow('⚠️  Skipping package installation. You\'ll need to install them manually:'));
+          console.log(chalk.gray(`   ${packageManager === 'yarn' ? 'yarn add' : packageManager === 'pnpm' ? 'pnpm add' : 'npm install'} ${requiredPackages.join(' ')}\n`));
+        }
+      } catch (error) {
+        console.log(chalk.red('❌ Interactive prompt failed. Installing packages automatically...'));
         installPackages(packageManager, requiredPackages);
-      } else {
-        console.log(chalk.yellow('⚠️  Skipping package installation. You\'ll need to install them manually:'));
-        console.log(chalk.gray(`   ${packageManager === 'yarn' ? 'yarn add' : packageManager === 'pnpm' ? 'pnpm add' : 'npm install'} ${requiredPackages.join(' ')}\n`));
       }
     } else {
       console.log(chalk.green('✅ All required packages are already installed\n'));
