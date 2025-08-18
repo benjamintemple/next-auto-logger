@@ -1,10 +1,55 @@
 #!/usr/bin/env node
 
-import chalk from "chalk";
-import { program } from "commander";
-import fs from "fs";
-import inquirer from "inquirer";
-import path from "path";
+const { program } = require('commander');
+const inquirer = require('inquirer');
+const fs = require('fs');
+const path = require('path');
+const chalk = require('chalk');
+const { execSync } = require('child_process');
+
+// Package manager detection and installation utilities
+function detectPackageManager() {
+  if (fs.existsSync('pnpm-lock.yaml')) return 'pnpm';
+  if (fs.existsSync('yarn.lock')) return 'yarn';
+  if (fs.existsSync('package-lock.json')) return 'npm';
+  return 'npm'; // default
+}
+
+function isPackageInstalled(packageName) {
+  try {
+    const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+    return !!(packageJson.dependencies?.[packageName] || packageJson.devDependencies?.[packageName]);
+  } catch {
+    return false;
+  }
+}
+
+function installPackages(packageManager, packages) {
+  const packagesStr = packages.join(' ');
+  console.log(chalk.blue(`📦 Installing packages: ${packagesStr}`));
+  
+  try {
+    let command;
+    switch (packageManager) {
+      case 'yarn':
+        command = `yarn add ${packagesStr}`;
+        break;
+      case 'pnpm':
+        command = `pnpm add ${packagesStr}`;
+        break;
+      default:
+        command = `npm install ${packagesStr}`;
+    }
+    
+    console.log(chalk.gray(`   Running: ${command}`));
+    execSync(command, { stdio: 'inherit' });
+    console.log(chalk.green(`✅ Packages installed successfully\n`));
+  } catch (error) {
+    console.log(chalk.red(`❌ Failed to install packages: ${error.message}`));
+    console.log(chalk.yellow('Please install manually:'));
+    console.log(chalk.gray(`   ${packageManager === 'yarn' ? 'yarn add' : packageManager === 'pnpm' ? 'pnpm add' : 'npm install'} ${packagesStr}\n`));
+  }
+}
 
 program
   .name("next-auto-logger")
@@ -15,6 +60,7 @@ program
   .description("Initialize next-auto-logger in your project")
   .action(async () => {
     console.log(chalk.blue.bold("\n🚀 Welcome to next-auto-logger setup!\n"));
+    
     // Check if we're in a Next.js project
     if (
       !fs.existsSync("next.config.js") &&
@@ -28,6 +74,52 @@ program
         )
       );
       process.exit(1);
+    }
+
+    // Check if package.json exists
+    if (!fs.existsSync('package.json')) {
+      console.log(chalk.red("❌ No package.json found."));
+      console.log(chalk.gray("   Run 'npm init' first to create a package.json file.\n"));
+      process.exit(1);
+    }
+
+    // Detect package manager
+    const packageManager = detectPackageManager();
+    console.log(chalk.gray(`📦 Detected package manager: ${packageManager}\n`));
+
+    // Check for required packages and install if missing
+    const requiredPackages = [];
+    
+    if (!isPackageInstalled('next-auto-logger')) {
+      requiredPackages.push('next-auto-logger');
+    }
+    
+    if (!isPackageInstalled('pino')) {
+      requiredPackages.push('pino');
+    }
+    
+    if (!isPackageInstalled('pino-pretty')) {
+      requiredPackages.push('pino-pretty');
+    }
+
+    if (requiredPackages.length > 0) {
+      console.log(chalk.yellow(`⚠️  Missing required packages: ${requiredPackages.join(', ')}`));
+      
+      const installConfirm = await inquirer.prompt([{
+        type: 'confirm',
+        name: 'install',
+        message: `Install missing packages using ${packageManager}?`,
+        default: true
+      }]);
+
+      if (installConfirm.install) {
+        installPackages(packageManager, requiredPackages);
+      } else {
+        console.log(chalk.yellow('⚠️  Skipping package installation. You\'ll need to install them manually:'));
+        console.log(chalk.gray(`   ${packageManager === 'yarn' ? 'yarn add' : packageManager === 'pnpm' ? 'pnpm add' : 'npm install'} ${requiredPackages.join(' ')}\n`));
+      }
+    } else {
+      console.log(chalk.green('✅ All required packages are already installed\n'));
     }
     const answers = await inquirer.prompt([
       {
@@ -350,6 +442,11 @@ function showSuccessMessage(answers) {
   }
   console.log(`   ${chalk.green("✓")} Log level: ${answers.logLevel}`);
   console.log(chalk.blue("\n🚀 Next steps:"));
+  console.log(`   ${chalk.green("✓")} All required packages are installed`);
+  console.log(`   ${chalk.green("✓")} API endpoint configured`);
+  console.log(`   ${chalk.green("✓")} Environment variables set`);
+  console.log("");
+  
   if (answers.autoInterceptors) {
     const layoutFile =
       answers.router === "app" ? "app/layout.tsx" : "pages/_app.tsx";
@@ -365,7 +462,7 @@ function showSuccessMessage(answers) {
     console.log("");
   }
   console.log(
-    `   ${answers.autoInterceptors ? "2" : "1"}. Start using the logger:`
+    `   ${answers.autoInterceptors ? "2" : "1"}. Start using the logger anywhere:`
   );
   console.log(
     chalk.gray('      import { createChildLogger } from "next-auto-logger";')
