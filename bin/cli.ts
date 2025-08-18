@@ -235,28 +235,42 @@ program
 async function createApiHandler(answers: any) {
   const { router, apiPath } = answers;
   
+  // Detect if project uses src directory structure
+  const hasSrcDir = fs.existsSync('src');
+  const baseDir = hasSrcDir ? 'src' : '.';
+  
   if (router === 'app') {
-    // App Router: app/api/logs/route.ts
-    const dirPath = path.join('app', 'api', apiPath.replace('/api/', ''));
+    // App Router: src/app/api/logs/route.ts or app/api/logs/route.ts
+    const dirPath = path.join(baseDir, 'app', 'api', apiPath.replace('/api/', ''));
     const filePath = path.join(dirPath, 'route.ts');
     
+    console.log(chalk.gray(`📁 Creating directory: ${dirPath}`));
     if (!fs.existsSync(dirPath)) {
       fs.mkdirSync(dirPath, { recursive: true });
+      console.log(chalk.gray(`✓ Directory created: ${dirPath}`));
+    } else {
+      console.log(chalk.gray(`✓ Directory already exists: ${dirPath}`));
     }
     
+    console.log(chalk.gray(`📄 Writing file: ${filePath}`));
     const template = getAppRouterTemplate(answers);
     fs.writeFileSync(filePath, template);
     
     console.log(chalk.green(`✅ Created ${filePath}`));
   } else {
-    // Pages Router: pages/api/logs.ts
-    const filePath = path.join('pages', 'api', `${apiPath.replace('/api/', '')}.ts`);
+    // Pages Router: src/pages/api/logs.ts or pages/api/logs.ts
+    const filePath = path.join(baseDir, 'pages', 'api', `${apiPath.replace('/api/', '')}.ts`);
     const dirPath = path.dirname(filePath);
     
+    console.log(chalk.gray(`📁 Creating directory: ${dirPath}`));
     if (!fs.existsSync(dirPath)) {
       fs.mkdirSync(dirPath, { recursive: true });
+      console.log(chalk.gray(`✓ Directory created: ${dirPath}`));
+    } else {
+      console.log(chalk.gray(`✓ Directory already exists: ${dirPath}`));
     }
     
+    console.log(chalk.gray(`📄 Writing file: ${filePath}`));
     const template = getPagesRouterTemplate(answers);
     fs.writeFileSync(filePath, template);
     
