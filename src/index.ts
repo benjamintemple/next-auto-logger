@@ -48,6 +48,7 @@ const createSimpleLogger = () =>
 interface LoggerMethod {
   (obj: object, msg?: string, ...args: any[]): void;
   (msg: string, ...args: any[]): void;
+  (...args: any[]): void;
 }
 
 interface ExtendedLogger {
@@ -102,6 +103,7 @@ export interface LoggerConfig {
   transformLog?: (event: RequestEvent) => RequestEvent;
   onError?: (error: Error) => void;
   autoSetupInterceptors?: boolean;
+  [key: string]: any;
 }
 
 // Request event types
