@@ -15,34 +15,49 @@ const isServer = !isClient;
 const isDev = process.env.NODE_ENV === "development";
 
 // Enhanced logger configuration
-const createSimpleLogger = () =>
-  pino({
+const createSimpleLogger = () => {
+  const baseConfig = {
     level: process.env.LOG_LEVEL || (isDev ? "debug" : "info"),
     formatters: {
-      level: label => ({ level: label }),
-      log: obj => ({
+      level: (label: string) => ({ level: label }),
+      log: (obj: any) => ({
         ...obj,
         timestamp: new Date().toISOString(),
         environment: isClient ? "client" : "server",
       }),
     },
-    // Only add pretty transport on server in development
-    ...(isDev && isServer && {
-      transport: {
-        target: "pino-pretty",
-        options: {
-          colorize: true,
-          ignore: "pid,hostname,time",
-          messageFormat: "{msg}",
-          translateTime: "HH:MM:ss Z",
+  };
+
+  // Try to add pretty transport safely
+  try {
+    if (isDev && isServer && typeof require !== 'undefined') {
+      return pino({
+        ...baseConfig,
+        transport: {
+          target: "pino-pretty",
+          options: {
+            colorize: true,
+            ignore: "pid,hostname,time",
+            messageFormat: "{msg}",
+            translateTime: "HH:MM:ss Z",
+          },
         },
-      },
-    }),
+      });
+    }
+  } catch (error) {
+    // Fall back to basic config if pino-pretty fails
+    console.warn('Pino-pretty transport failed, using basic logging');
+  }
+
+  // Fallback configuration without pretty transport
+  return pino({
+    ...baseConfig,
     // Production server config for CloudWatch
     ...(!isDev && isServer && {
       redact: ['headers.authorization', 'headers.cookie', 'body.password'],
     }),
   });
+};
 
 // Define proper logger interface that matches Pino's actual API
 interface LoggerMethod {
