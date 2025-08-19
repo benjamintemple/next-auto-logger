@@ -1,6 +1,6 @@
 {
   "name": "next-auto-logger",
-  "version": "1.1.13",
+  "version": "1.1.14",
   "description": "Universal Pino-based request logger for Next.js - auto-detects client/server, pretty logs in dev, CloudWatch in production",
   "type": "module",
   "main": "dist/index.cjs",

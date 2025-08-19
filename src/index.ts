@@ -9,46 +9,12 @@ declare module 'pino' {
   }
 }
 
-// Environment detection
-const isClient = typeof window !== "undefined";
-const isServer = !isClient;
+// Environment detection functions - called dynamically
+const getEnvironment = () => typeof window !== "undefined" ? "client" : "server";
+const isServer = () => typeof window === "undefined";
 const isDev = process.env.NODE_ENV === "development";
 
-// Safe pretty transport configuration
-const getSafePrettyTransport = () => {
-  try {
-    // Test if pino-pretty can be safely used
-    require.resolve('pino-pretty');
-    
-    // Additional safety check for worker threads environment
-    const hasWorkerThreads = (() => {
-      try {
-        require('worker_threads');
-        return true;
-      } catch {
-        return false;
-      }
-    })();
-
-    if (hasWorkerThreads) {
-      return {
-        target: "pino-pretty",
-        options: {
-          colorize: true,
-          ignore: "pid,hostname,time",
-          messageFormat: "{msg}",
-          translateTime: "HH:MM:ss Z",
-        },
-      };
-    }
-  } catch (error) {
-    // pino-pretty not available or not working
-  }
-  
-  return null;
-};
-
-// Enhanced logger configuration with graceful fallback
+// Simple logger configuration - back to basics
 const createSimpleLogger = () => {
   const baseConfig = {
     level: process.env.LOG_LEVEL || (isDev ? "debug" : "info"),
@@ -57,23 +23,33 @@ const createSimpleLogger = () => {
       log: (obj: any) => ({
         ...obj,
         timestamp: new Date().toISOString(),
-        environment: isClient ? "client" : "server",
+        environment: getEnvironment(), // Dynamic detection
       }),
     },
     // Production server config for CloudWatch
-    ...(!isDev && isServer && {
+    ...(!isDev && isServer() && {
       redact: ['headers.authorization', 'headers.cookie', 'body.password'],
     }),
   };
 
-  // Try to use pretty transport in development
-  if (isDev && isServer) {
-    const prettyTransport = getSafePrettyTransport();
-    if (prettyTransport) {
-      return pino({ ...baseConfig, transport: prettyTransport });
-    } else {
-      // Fallback to JSON with a helpful message
-      console.log('📝 Using JSON logs (install pino-pretty for pretty logs)');
+  // Use pretty transport in development on server
+  if (isDev && isServer()) {
+    try {
+      return pino({
+        ...baseConfig,
+        transport: {
+          target: "pino-pretty",
+          options: {
+            colorize: true,
+            ignore: "pid,hostname,time",
+            messageFormat: "{msg}",
+            translateTime: "HH:MM:ss Z",
+          },
+        },
+      });
+    } catch (error) {
+      // Fallback to JSON if pino-pretty fails
+      console.warn('pino-pretty failed, using JSON logs');
     }
   }
 
@@ -99,34 +75,39 @@ interface ExtendedLogger {
 
 let logger: ExtendedLogger;
 
-// Only create Pino logger on server-side
-if (isServer) {
-  try {
-    logger = createSimpleLogger();
-  } catch (error) {
-    console.warn("Failed to initialize server logger, using console fallback:", error);
-    logger = {
-      info: (obj: any, msg?: string) => console.log(msg || obj),
-      warn: (obj: any, msg?: string) => console.warn(msg || obj),
-      error: (obj: any, msg?: string) => console.error(msg || obj),
-      debug: (obj: any, msg?: string) => console.debug(msg || obj),
-      trace: (obj: any, msg?: string) => console.trace(msg || obj),
-      fatal: (obj: any, msg?: string) => console.error(msg || obj),
-      child: () => logger,
+// Create logger dynamically based on current environment
+const getLogger = () => {
+  if (isServer()) {
+    try {
+      return createSimpleLogger();
+    } catch (error) {
+      console.warn("Failed to initialize server logger, using console fallback:", error);
+      return {
+        info: (obj: any, msg?: string) => console.log(msg || obj),
+        warn: (obj: any, msg?: string) => console.warn(msg || obj),
+        error: (obj: any, msg?: string) => console.error(msg || obj),
+        debug: (obj: any, msg?: string) => console.debug(msg || obj),
+        trace: (obj: any, msg?: string) => console.trace(msg || obj),
+        fatal: (obj: any, msg?: string) => console.error(msg || obj),
+        child: () => getLogger(),
+      } as unknown as pino.Logger;
+    }
+  } else {
+    // Client-side fallback logger
+    return {
+      info: isDev ? (obj: any, msg?: string) => console.log(msg || obj) : () => {},
+      warn: isDev ? (obj: any, msg?: string) => console.warn(msg || obj) : () => {},
+      error: isDev ? (obj: any, msg?: string) => console.error(msg || obj) : () => {},
+      debug: isDev ? (obj: any, msg?: string) => console.debug(msg || obj) : () => {},
+      trace: isDev ? (obj: any, msg?: string) => console.trace(msg || obj) : () => {},
+      fatal: isDev ? (obj: any, msg?: string) => console.error(msg || obj) : () => {},
+      child: () => getLogger(),
     } as unknown as pino.Logger;
   }
-} else {
-  // Client-side fallback logger
-  logger = {
-    info: isDev ? (obj: any, msg?: string) => console.log(msg || obj) : () => {},
-    warn: isDev ? (obj: any, msg?: string) => console.warn(msg || obj) : () => {},
-    error: isDev ? (obj: any, msg?: string) => console.error(msg || obj) : () => {},
-    debug: isDev ? (obj: any, msg?: string) => console.debug(msg || obj) : () => {},
-    trace: isDev ? (obj: any, msg?: string) => console.trace(msg || obj) : () => {},
-    fatal: isDev ? (obj: any, msg?: string) => console.error(msg || obj) : () => {},
-    child: () => logger,
-  } as unknown as pino.Logger;
-}
+};
+
+// Initialize logger
+logger = getLogger();
 
 // Configuration interface
 export interface LoggerConfig {
@@ -212,7 +193,7 @@ const shouldLog = (url: string): boolean => {
 };
 
 const sendToServerAPI = async (event: RequestEvent): Promise<void> => {
-  if (!isClient || !globalConfig.clientLogEndpoint) return;
+  if (isServer() || !globalConfig.clientLogEndpoint) return;
   
   try {
     await fetch(globalConfig.clientLogEndpoint, {
@@ -240,11 +221,11 @@ const logEvent = async (event: RequestEvent): Promise<void> => {
   // Transform log if transformer exists
   const finalEvent = globalConfig.transformLog ? globalConfig.transformLog(event) : event;
 
-  if (isServer && logger) {
+  if (isServer() && logger) {
     // Server-side: Log directly with Pino
     const level = finalEvent.event === 'request_error' ? 'error' : 'info';
     (logger as any)[level](finalEvent);
-  } else if (isClient) {
+  } else if (!isServer()) {
     // Client-side: Send to server API and optionally log to console in dev
     if (isDev) {
       console.log(`[${finalEvent.event}]`, finalEvent);
@@ -260,16 +241,16 @@ export const createLogger = (config?: Partial<LoggerConfig>): UniversalLogger =>
   }
 
   // Auto-setup interceptors on client-side
-  if (isClient && globalConfig.autoSetupInterceptors) {
+  if (!isServer() && globalConfig.autoSetupInterceptors) {
     setupInterceptors();
   }
 
   return {
-    pino: isServer ? logger : undefined,
+    pino: isServer() ? logger : undefined,
     log: logEvent,
-    isClient,
-    isServer,
-    environment: isClient ? 'client' : 'server',
+    isClient: !isServer(),
+    isServer: isServer(),
+    environment: getEnvironment(),
   };
 };
 
@@ -453,7 +434,7 @@ export { logger as pino };
  */
 export const createChildLogger = (context: LoggerContext): ExtendedLogger => {
   // Only create child loggers on server-side
-  if (isClient) {
+  if (!isServer()) {
     return logger; // Return the fallback logger on client
   }
 
