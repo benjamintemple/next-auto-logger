@@ -175,16 +175,24 @@ const sendToServerAPI = async (event: RequestEvent): Promise<void> => {
   if (isServer() || !globalConfig.clientLogEndpoint) return;
   
   try {
-    await fetch(globalConfig.clientLogEndpoint, {
+    const response = await fetch(globalConfig.clientLogEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(event),
     });
+    
+    if (!response.ok) {
+      throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+    }
   } catch (error) {
     if (globalConfig.onError) {
       globalConfig.onError(error instanceof Error ? error : new Error(String(error)));
     } else if (isDev) {
-      console.error('[nextjs-pino-logger] Failed to send log to server:', error);
+      // Only show this error once to avoid spam
+      if (!sessionStorage.getItem('next-auto-logger-api-error-shown')) {
+        console.warn('[next-auto-logger] API endpoint not set up. Run "npx next-auto-logger init" to create /api/logs');
+        sessionStorage.setItem('next-auto-logger-api-error-shown', 'true');
+      }
     }
   }
 };
@@ -205,10 +213,7 @@ const logEvent = async (event: RequestEvent): Promise<void> => {
     const level = finalEvent.event === 'request_error' ? 'error' : 'info';
     (logger as any)[level](finalEvent);
   } else if (!isServer()) {
-    // Client-side: Send to server API and optionally log to console in dev
-    if (isDev) {
-      console.log(`[${finalEvent.event}]`, finalEvent);
-    }
+    // Client-side: Send to server API only (will show in npm run dev:pretty)
     await sendToServerAPI(finalEvent);
   }
 };
