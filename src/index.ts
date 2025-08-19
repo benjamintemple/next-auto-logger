@@ -156,6 +156,13 @@ let globalConfig: LoggerConfig = {
 export interface UniversalLogger {
   pino?: ExtendedLogger;
   log: (event: RequestEvent) => Promise<void>;
+  info: LoggerMethod;
+  warn: LoggerMethod;
+  error: LoggerMethod;
+  debug: LoggerMethod;
+  trace: LoggerMethod;
+  fatal: LoggerMethod;
+  child: (obj: object) => ExtendedLogger;
   isServer: boolean;
   environment: 'client' | 'server';
 }
@@ -232,6 +239,13 @@ export const createLogger = (config?: Partial<LoggerConfig>): UniversalLogger =>
   return {
     pino: isServer() ? logger : undefined,
     log: logEvent,
+    info: logger.info.bind(logger),
+    warn: logger.warn.bind(logger),
+    error: logger.error.bind(logger),
+    debug: logger.debug.bind(logger),
+    trace: logger.trace.bind(logger),
+    fatal: logger.fatal.bind(logger),
+    child: (obj: object) => logger.child(obj),
     isServer: isServer(),
     environment: getEnvironment(),
   };

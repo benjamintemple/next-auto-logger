@@ -1,6 +1,6 @@
 # next-auto-logger
 
-**The first logging solution designed specifically for Next.js + AWS CloudWatch** - Finally, a logger that actually works seamlessly across client/server boundaries and makes CloudWatch feel like magic instead of a nightmare.
+**The first logging solution designed specifically for Next.js + AWS CloudWatch** - JSON logs everywhere for reliability, with optional pretty logging via external piping. Works seamlessly across client/server boundaries and makes CloudWatch feel like magic instead of a nightmare.
 
 ## 🚀 Quick Start
 
@@ -70,9 +70,9 @@ const logger = createChildLogger({ module: "UserFlow" });
 logger.info("User started checkout", { userId: 123, cartValue: 89.99 });
 
 // Automatically:
-// ✅ Beautiful in development
-// ✅ Structured JSON in CloudWatch
+// ✅ Structured JSON logs everywhere for reliability
 // ✅ Client logs reach CloudWatch via your API
+// ✅ Optional pretty logs via npm run dev:pretty
 // ✅ Searchable, queryable, actually useful
 ```
 
@@ -89,12 +89,12 @@ logger.info("User started checkout", { userId: 123, cartValue: 89.99 });
 npx next-auto-logger init
 
 # The CLI will automatically:
-# ✅ Install next-auto-logger, pino, and pino-pretty
+# ✅ Install next-auto-logger and pino
 # ✅ Detect your package manager (npm/yarn/pnpm)
 # ✅ Choose your router (App Router/Pages Router)
 # ✅ Set up API endpoints automatically
 # ✅ Configure logging options
-# ✅ Create example files
+# ✅ Optionally set up pretty logging (npm run dev:pretty)
 ```
 
 **The CLI handles everything** - no need to manually install packages or create files. Just run the command and you're ready to log!
@@ -151,7 +151,7 @@ fields @timestamp, module, msg, error, email
 #### Problem 2: Different log formats everywhere
 
 **Traditional approach:** console.log in dev, JSON.stringify in prod, manual formatting
-**next-auto-logger:** Perfect dev formatting, perfect CloudWatch JSON, automatically
+**next-auto-logger:** Structured JSON everywhere for reliability, optional pretty logs via external piping
 
 #### Problem 3: No request correlation between client/server
 
@@ -243,7 +243,6 @@ The interactive setup wizard will:
 1. **Install missing packages** - Automatically detects and installs required dependencies:
    - `next-auto-logger` - The main logging library
    - `pino` - High-performance JSON logger
-   - `pino-pretty` - Pretty-print logs in development
 2. **Detect package manager** - Works with npm, yarn, or pnpm automatically
 3. **Detect your Next.js setup** - Automatically identifies App Router vs Pages Router
 4. **Create API endpoints** - Generates the correct API handler for your router type
@@ -255,7 +254,7 @@ The interactive setup wizard will:
    - Set default log level for production
    - Create example usage file
 6. **Environment setup** - Creates `.env.local` with optimal settings
-7. **Generate examples** - Creates `logger-example.ts` with usage patterns
+7. **Pretty logging setup** - Optionally installs pino-pretty and adds `dev:pretty` script to package.json
 
 #### CLI Output Example
 
@@ -266,17 +265,16 @@ $ npx next-auto-logger init
 
 📦 Detected package manager: npm
 
-⚠️  Missing required packages: next-auto-logger, pino, pino-pretty
+⚠️  Missing required packages: next-auto-logger, pino
 🔍 These packages are required for next-auto-logger to work properly:
 
    • next-auto-logger - The main logging library
    • pino - High-performance JSON logger
-   • pino-pretty - Pretty-print logs in development
 
 ? Install missing packages using npm? Yes
 
-📦 Installing packages: next-auto-logger pino pino-pretty
-   Running: npm install next-auto-logger pino pino-pretty
+📦 Installing packages: next-auto-logger pino
+   Running: npm install next-auto-logger pino
 ✅ Packages installed successfully
 
 ? Which Next.js router are you using? App Router (Next.js 13+) - Recommended
@@ -322,6 +320,26 @@ $ npx next-auto-logger init
 Happy logging! 🎉
 ```
 
+#### 🎨 Pretty Logging for Development
+
+next-auto-logger outputs JSON logs everywhere for reliability and CloudWatch compatibility. For beautiful development logs, use external piping:
+
+```bash
+# Option 1: Use the dev:pretty script (added by CLI)
+npm run dev:pretty
+# or
+yarn dev:pretty
+
+# Option 2: Manual piping
+npm run dev | npx pino-pretty
+```
+
+**Why JSON everywhere?**
+- ✅ **Reliable** - No worker thread crashes or compatibility issues
+- ✅ **CloudWatch optimized** - Perfect structured logs for production
+- ✅ **Consistent** - Same format in all environments
+- ✅ **External pretty** - Beautiful logs when you want them via piping
+
 ---
 
 ### 🔧 Level 2: The Magic of Auto HTTP Logging
@@ -341,7 +359,10 @@ npx next-auto-logger init
 
 ```bash
 # First install packages manually
-npm install next-auto-logger pino pino-pretty
+npm install next-auto-logger pino
+
+# Optional: for pretty logging during development
+npm install pino-pretty
 ```
 
 ```typescript
@@ -872,26 +893,27 @@ logger.error("Payment processing failed", {
 #### From Manual Pino Setup
 
 ```typescript
-// Before: Complex Pino configuration
+// Before: Complex Pino configuration and worker thread issues
 import pino from "pino";
 const logger = pino({
   level: process.env.LOG_LEVEL,
   transport:
     process.env.NODE_ENV === "development"
       ? {
-          target: "pino-pretty",
+          target: "pino-pretty", // ❌ Causes Next.js worker crashes
           options: { colorize: true },
         }
       : undefined,
   formatters: {
     level: label => ({ level: label }),
   },
-  // ... 50 more lines of config
+  // ... 50 more lines of config prone to breaking
 });
 
-// After: Just works
+// After: Reliable and simple
 import { createChildLogger } from "next-auto-logger";
 const logger = createChildLogger({ module: "MyModule" });
+// JSON everywhere, pretty logs via: npm run dev:pretty
 ```
 
 #### From AWS CloudWatch Struggle
@@ -929,7 +951,8 @@ fields @timestamp, module, msg, userId, error
 #### ✅ Zero Configuration Required
 
 - Smart defaults that actually work
-- Beautiful dev logs, structured production logs
+- Structured JSON logs everywhere for reliability
+- Optional pretty logs via external piping (`npm run dev:pretty`)
 - Auto-detects environment and configures appropriately
 
 #### ✅ Production Battle-Tested
