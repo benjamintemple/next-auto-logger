@@ -102,10 +102,6 @@ program
     if (!isPackageInstalled('pino')) {
       requiredPackages.push('pino');
     }
-    
-    if (!isPackageInstalled('pino-pretty')) {
-      requiredPackages.push('pino-pretty');
-    }
 
     if (requiredPackages.length > 0) {
       console.log(chalk.yellow(`⚠️  Missing required packages: ${requiredPackages.join(', ')}`));
@@ -116,8 +112,6 @@ program
           console.log(`   • ${chalk.cyan(pkg)} - The main logging library`);
         } else if (pkg === 'pino') {
           console.log(`   • ${chalk.cyan(pkg)} - High-performance JSON logger`);
-        } else if (pkg === 'pino-pretty') {
-          console.log(`   • ${chalk.cyan(pkg)} - Pretty-print logs in development`);
         }
       });
       
@@ -217,6 +211,9 @@ program
       
       // Create or update environment file
       await updateEnvFile(answers);
+      
+      // Suggest pretty logging setup
+      await suggestPrettyLogging(packageManager);
 
       // Show success message
       showSuccessMessage(answers);
@@ -299,6 +296,55 @@ LOG_LEVEL=${answers.logLevel}
   } else {
     fs.writeFileSync(envPath, envContent.trim());
     console.log(chalk.green(`✅ Created ${envPath}`));
+  }
+}
+
+async function suggestPrettyLogging(packageManager: string) {
+  console.log(chalk.blue('\n🎨 Pretty Logging Setup (Optional)'));
+  console.log(chalk.gray('next-auto-logger now outputs JSON logs everywhere for reliability.'));
+  console.log(chalk.gray('For pretty development logs, you can pipe output through pino-pretty:\n'));
+  
+  const wantsPrettyLogging = await confirm({
+    message: 'Add a dev:pretty script to your package.json for beautiful logs?',
+    default: true
+  });
+  
+  if (wantsPrettyLogging) {
+    try {
+      // Install pino-pretty if not already installed
+      if (!isPackageInstalled('pino-pretty')) {
+        console.log(chalk.blue('\n📦 Installing pino-pretty for pretty logging...'));
+        installPackages(packageManager, ['pino-pretty']);
+      }
+      
+      // Read package.json
+      const packageJsonPath = 'package.json';
+      const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+      
+      // Add dev:pretty script
+      if (!packageJson.scripts) {
+        packageJson.scripts = {};
+      }
+      
+      packageJson.scripts['dev:pretty'] = 'next dev | npx pino-pretty';
+      
+      // Write back to package.json
+      fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
+      
+      console.log(chalk.green('✅ Added dev:pretty script to package.json'));
+      console.log(chalk.blue('\n💡 Usage:'));
+      console.log(chalk.gray(`   Run: ${packageManager === 'yarn' ? 'yarn' : packageManager} run dev:pretty`));
+      console.log(chalk.gray('   This gives you beautiful, colored logs in development!'));
+      
+    } catch (error) {
+      console.log(chalk.yellow('⚠️  Could not automatically add dev:pretty script.'));
+      console.log(chalk.gray('You can manually add this to your package.json scripts:'));
+      console.log(chalk.gray('   "dev:pretty": "next dev | npx pino-pretty"'));
+    }
+  } else {
+    console.log(chalk.gray('\n💡 You can always add pretty logging later by running:'));
+    console.log(chalk.gray(`   ${packageManager === 'yarn' ? 'yarn add' : packageManager === 'pnpm' ? 'pnpm add' : 'npm install'} pino-pretty`));
+    console.log(chalk.gray('   Then run: next dev | npx pino-pretty'));
   }
 }
 

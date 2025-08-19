@@ -49,7 +49,6 @@ describe('Environment Detection', () => {
     const { universalLogger } = await import('../index')
     
     expect(universalLogger.isServer).toBe(true)
-    expect(universalLogger.isClient).toBe(false)
     expect(universalLogger.environment).toBe('server')
   })
 
@@ -61,7 +60,6 @@ describe('Environment Detection', () => {
     vi.resetModules()
     const { universalLogger } = await import('../index')
     
-    expect(universalLogger.isClient).toBe(true)
     expect(universalLogger.isServer).toBe(false)
     expect(universalLogger.environment).toBe('client')
   })
@@ -246,7 +244,6 @@ describe('Universal Logger', () => {
     const logger = createLogger()
     expect(logger).toBeDefined()
     expect(logger.log).toBeDefined()
-    expect(typeof logger.isClient).toBe('boolean')
     expect(typeof logger.isServer).toBe('boolean')
   })
 

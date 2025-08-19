@@ -14,7 +14,7 @@ const getEnvironment = () => typeof window !== "undefined" ? "client" : "server"
 const isServer = () => typeof window === "undefined";
 const isDev = process.env.NODE_ENV === "development";
 
-// Simple logger configuration - back to basics
+// Simple JSON-only logger configuration
 const createSimpleLogger = () => {
   const baseConfig = {
     level: process.env.LOG_LEVEL || (isDev ? "debug" : "info"),
@@ -23,7 +23,7 @@ const createSimpleLogger = () => {
       log: (obj: any) => ({
         ...obj,
         timestamp: new Date().toISOString(),
-        environment: getEnvironment(), // Dynamic detection
+        environment: getEnvironment(),
       }),
     },
     // Production server config for CloudWatch
@@ -32,27 +32,7 @@ const createSimpleLogger = () => {
     }),
   };
 
-  // Use pretty transport in development on server
-  if (isDev && isServer()) {
-    try {
-      return pino({
-        ...baseConfig,
-        transport: {
-          target: "pino-pretty",
-          options: {
-            colorize: true,
-            ignore: "pid,hostname,time",
-            messageFormat: "{msg}",
-            translateTime: "HH:MM:ss Z",
-          },
-        },
-      });
-    } catch (error) {
-      // Fallback to JSON if pino-pretty fails
-      console.warn('pino-pretty failed, using JSON logs');
-    }
-  }
-
+  // Always use JSON logs (no pino-pretty)
   return pino(baseConfig);
 };
 
@@ -176,7 +156,6 @@ let globalConfig: LoggerConfig = {
 export interface UniversalLogger {
   pino?: ExtendedLogger;
   log: (event: RequestEvent) => Promise<void>;
-  isClient: boolean;
   isServer: boolean;
   environment: 'client' | 'server';
 }
@@ -248,7 +227,6 @@ export const createLogger = (config?: Partial<LoggerConfig>): UniversalLogger =>
   return {
     pino: isServer() ? logger : undefined,
     log: logEvent,
-    isClient: !isServer(),
     isServer: isServer(),
     environment: getEnvironment(),
   };
