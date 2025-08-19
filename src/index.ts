@@ -73,14 +73,41 @@ const getLogger = () => {
       } as unknown as pino.Logger;
     }
   } else {
-    // Client-side fallback logger
+    // Client-side logger that sends to server API
+    const createClientLogMethod = (level: string) => (obj: any, msg?: string) => {
+      const message = msg || (typeof obj === 'string' ? obj : JSON.stringify(obj));
+      const data = typeof obj === 'object' && obj !== null ? obj : {};
+      
+      // Create a manual log event to send to server
+      const logEvent: RequestEvent = {
+        event: 'request_success', // Use success event type for manual logs
+        requestId: typeof crypto !== 'undefined' && crypto.randomUUID 
+          ? crypto.randomUUID() 
+          : `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        timestamp: new Date().toISOString(),
+        url: typeof window !== 'undefined' ? window.location.pathname : '/',
+        method: 'MANUAL_LOG',
+        library: 'manual',
+        environment: 'client',
+        status: level === 'error' ? 500 : 200,
+        statusText: level.toUpperCase(),
+        duration: 0,
+        ...data,
+        level,
+        msg: message,
+      };
+      
+      // Send to server API (will show in server logs)
+      sendToServerAPI(logEvent);
+    };
+
     return {
-      info: isDev ? (obj: any, msg?: string) => console.log(msg || obj) : () => {},
-      warn: isDev ? (obj: any, msg?: string) => console.warn(msg || obj) : () => {},
-      error: isDev ? (obj: any, msg?: string) => console.error(msg || obj) : () => {},
-      debug: isDev ? (obj: any, msg?: string) => console.debug(msg || obj) : () => {},
-      trace: isDev ? (obj: any, msg?: string) => console.trace(msg || obj) : () => {},
-      fatal: isDev ? (obj: any, msg?: string) => console.error(msg || obj) : () => {},
+      info: createClientLogMethod('info'),
+      warn: createClientLogMethod('warn'),
+      error: createClientLogMethod('error'),
+      debug: createClientLogMethod('debug'),
+      trace: createClientLogMethod('trace'),
+      fatal: createClientLogMethod('fatal'),
       child: () => getLogger(),
     } as unknown as pino.Logger;
   }
