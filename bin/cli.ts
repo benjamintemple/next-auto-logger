@@ -5,6 +5,17 @@ import path from 'path';
 import chalk from 'chalk';
 import { execSync } from 'child_process';
 
+// Handle graceful shutdowns
+process.on('SIGINT', () => {
+  console.log(chalk.yellow('\n\n👋 Setup cancelled. You can run "npx next-auto-logger init" again anytime.\n'));
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log(chalk.yellow('\n\n👋 Setup cancelled. You can run "npx next-auto-logger init" again anytime.\n'));
+  process.exit(0);
+});
+
 // Package manager detection and installation utilities
 function detectPackageManager() {
   if (fs.existsSync('pnpm-lock.yaml')) return 'pnpm';
@@ -189,20 +200,13 @@ program
     });
     console.log(chalk.gray('\n   📖 Development always uses debug level with pretty printing\n   🏭 Production uses this level with structured JSON\n'));
 
-    const createExample = await confirm({
-      message: 'Create example usage file?',
-      default: true
-    });
-    console.log(chalk.gray('\n   📖 Creates example.ts showing how to use the logger\n   ✅ Great for getting started quickly\n'));
-
     const answers = {
       router,
       apiPath,
       autoInterceptors,
       includeHeaders,
       includeBody,
-      logLevel: logLevelChoice,
-      createExample
+      logLevel: logLevelChoice
     };
 
     console.log(chalk.blue('\n📁 Creating files...\n'));
@@ -211,18 +215,19 @@ program
       // Create API handler
       await createApiHandler(answers);
       
-      // Create example if requested
-      if (answers.createExample) {
-        await createExampleFile(answers);
-      }
-
       // Create or update environment file
       await updateEnvFile(answers);
 
       // Show success message
       showSuccessMessage(answers);
 
-    } catch (error) {
+    } catch (error: any) {
+      // Handle graceful cancellation
+      if (error?.name === 'ExitPromptError' || error?.message?.includes('SIGINT')) {
+        console.log(chalk.yellow('\n👋 Setup cancelled. You can run "npx next-auto-logger init" again anytime.\n'));
+        process.exit(0);
+      }
+      
       console.log(chalk.red(`❌ Setup failed: ${error instanceof Error ? error.message : String(error) || 'Unknown error'}`));
       process.exit(1);
     }
@@ -274,13 +279,7 @@ async function createApiHandler(answers: any) {
   }
 }
 
-async function createExampleFile(answers: any) {
-  const template = getExampleTemplate(answers);
-  const filePath = 'logger-example.ts';
-  
-  fs.writeFileSync(filePath, template);
-  console.log(chalk.green(`✅ Created ${filePath}`));
-}
+
 
 async function updateEnvFile(answers: any) {
   const envPath = '.env.local';
@@ -329,100 +328,7 @@ ${imports}
 `;
 }
 
-function getExampleTemplate(answers: any) {
-  const autoInterceptorNote = answers.autoInterceptors 
-    ? `// 🎉 Automatic logging is enabled! 
-// All fetch(), axios, React Query requests are automatically logged
 
-// Manual logging examples:`
-    : `// Manual logging examples:
-// (Add 'import "next-auto-logger/auto"' to enable automatic request logging)`;
-
-  return `// next-auto-logger usage examples
-import { createChildLogger, measureDuration } from 'next-auto-logger';
-
-${autoInterceptorNote}
-
-// 1. Basic component logging
-const logger = createChildLogger({ 
-  module: 'UserDashboard',
-  component: 'LoginForm' 
-});
-
-export default function LoginForm() {
-  const handleLogin = async (credentials: any) => {
-    logger.info('Login attempt started', { email: credentials.email });
-    
-    try {
-      // This fetch will be automatically logged if interceptors are enabled
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(credentials)
-      });
-      
-      if (response.ok) {
-        logger.info('Login successful', { userId: 'user_123' });
-      } else {
-        logger.warn('Login failed', { status: response.status });
-      }
-    } catch (error) {
-      logger.error('Login error', { error: error.message });
-    }
-  };
-
-  return <form onSubmit={handleLogin}>...</form>;
-}
-
-// 2. API route logging
-// app/api/users/route.ts
-export async function GET() {
-  const logger = createChildLogger({ module: 'UserAPI' });
-  
-  logger.info('Fetching users');
-  
-  try {
-    const users = await getUsersFromDB();
-    logger.info('Users fetched successfully', { count: users.length });
-    return Response.json(users);
-  } catch (error) {
-    logger.error('Failed to fetch users', { error: error.message });
-    return Response.json({ error: 'Internal error' }, { status: 500 });
-  }
-}
-
-// 3. Performance monitoring
-export async function processLargeDataset(data: any[]) {
-  const logger = createChildLogger({ module: 'DataProcessor' });
-  
-  return measureDuration(
-    'process-dataset',
-    async () => {
-      // Your expensive operation
-      return await heavyProcessing(data);
-    },
-    logger
-  );
-}
-
-// 4. CloudWatch queries you can run:
-/*
--- Find all errors in the last hour
-fields @timestamp, module, msg, error
-| filter level = "error"
-| sort @timestamp desc
-
--- Monitor API performance  
-fields @timestamp, url, method, duration
-| filter duration > 1000
-| stats avg(duration), max(duration) by url
-
--- Track user actions
-fields @timestamp, module, msg, userId
-| filter userId = "user_123"
-| sort @timestamp desc
-*/
-`;
-}
 
 function showSuccessMessage(answers: any  ) {
   console.log(chalk.green.bold('\n🎉 next-auto-logger setup complete!\n'));
@@ -452,12 +358,7 @@ function showSuccessMessage(answers: any  ) {
   console.log(chalk.gray('      logger.info("Hello world!", { userId: "123" });'));
   console.log('');
   
-  if (answers.createExample) {
-    console.log(`   ${answers.autoInterceptors ? '3' : '2'}. Check out ${chalk.yellow('logger-example.ts')} for more examples`);
-    console.log('');
-  }
-  
-  console.log(`   ${answers.autoInterceptors ? (answers.createExample ? '4' : '3') : (answers.createExample ? '3' : '2')}. Deploy and view logs in AWS CloudWatch Insights`);
+  console.log(`   ${answers.autoInterceptors ? '3' : '2'}. Deploy and view logs in AWS CloudWatch Insights`);
   console.log('');
   
   console.log(chalk.blue('📚 Resources:'));
