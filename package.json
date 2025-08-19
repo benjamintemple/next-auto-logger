@@ -1,6 +1,6 @@
 {
   "name": "next-auto-logger",
-  "version": "1.1.11",
+  "version": "1.1.12",
   "description": "Universal Pino-based request logger for Next.js - auto-detects client/server, pretty logs in dev, CloudWatch in production",
   "type": "module",
   "main": "dist/index.cjs",
@@ -55,7 +55,8 @@
   },
   "peerDependencies": {
     "next": ">=12.0.0",
-    "pino": ">=8.0.0"
+    "pino": ">=8.0.0",
+    "pino-pretty": ">=10.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
@@ -68,6 +69,9 @@
       "optional": true
     },
     "swr": {
+      "optional": true
+    },
+    "pino-pretty": {
       "optional": true
     }
   },
@@ -86,7 +90,6 @@
     "chalk": "^5.6.0",
     "commander": "^11.0.0",
     "inquirer": "^12.9.3",
-    "pino-pretty": "^13.1.1",
     "typescript": "^5.9.2"
   }
 }

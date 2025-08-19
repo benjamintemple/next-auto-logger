@@ -5,7 +5,9 @@
       "Bash(npm run test:*)",
       "Bash(npm test)",
       "Bash(ls:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(npm link:*)",
+      "Bash(npx next-auto-logger:*)"
     ],
     "deny": []
   }

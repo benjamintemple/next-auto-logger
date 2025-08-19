@@ -14,7 +14,41 @@ const isClient = typeof window !== "undefined";
 const isServer = !isClient;
 const isDev = process.env.NODE_ENV === "development";
 
-// Enhanced logger configuration
+// Safe pretty transport configuration
+const getSafePrettyTransport = () => {
+  try {
+    // Test if pino-pretty can be safely used
+    require.resolve('pino-pretty');
+    
+    // Additional safety check for worker threads environment
+    const hasWorkerThreads = (() => {
+      try {
+        require('worker_threads');
+        return true;
+      } catch {
+        return false;
+      }
+    })();
+
+    if (hasWorkerThreads) {
+      return {
+        target: "pino-pretty",
+        options: {
+          colorize: true,
+          ignore: "pid,hostname,time",
+          messageFormat: "{msg}",
+          translateTime: "HH:MM:ss Z",
+        },
+      };
+    }
+  } catch (error) {
+    // pino-pretty not available or not working
+  }
+  
+  return null;
+};
+
+// Enhanced logger configuration with graceful fallback
 const createSimpleLogger = () => {
   const baseConfig = {
     level: process.env.LOG_LEVEL || (isDev ? "debug" : "info"),
@@ -26,37 +60,24 @@ const createSimpleLogger = () => {
         environment: isClient ? "client" : "server",
       }),
     },
-  };
-
-  // Try to add pretty transport safely
-  try {
-    if (isDev && isServer && typeof require !== 'undefined') {
-      return pino({
-        ...baseConfig,
-        transport: {
-          target: "pino-pretty",
-          options: {
-            colorize: true,
-            ignore: "pid,hostname,time",
-            messageFormat: "{msg}",
-            translateTime: "HH:MM:ss Z",
-          },
-        },
-      });
-    }
-  } catch (error) {
-    // Fall back to basic config if pino-pretty fails
-    console.warn('Pino-pretty transport failed, using basic logging');
-  }
-
-  // Fallback configuration without pretty transport
-  return pino({
-    ...baseConfig,
     // Production server config for CloudWatch
     ...(!isDev && isServer && {
       redact: ['headers.authorization', 'headers.cookie', 'body.password'],
     }),
-  });
+  };
+
+  // Try to use pretty transport in development
+  if (isDev && isServer) {
+    const prettyTransport = getSafePrettyTransport();
+    if (prettyTransport) {
+      return pino({ ...baseConfig, transport: prettyTransport });
+    } else {
+      // Fallback to JSON with a helpful message
+      console.log('📝 Using JSON logs (install pino-pretty for pretty logs)');
+    }
+  }
+
+  return pino(baseConfig);
 };
 
 // Define proper logger interface that matches Pino's actual API
