@@ -12,7 +12,7 @@ declare module 'pino' {
   }
 }
 
-// Create logger with same config as main logger
+// Create JSON-only logger (no pino-pretty to avoid worker thread issues)
 const createLogger = (): pino.Logger => {
   const isDev = process.env.NODE_ENV === 'development';
   
@@ -26,17 +26,7 @@ const createLogger = (): pino.Logger => {
         environment: 'server',
       }),
     },
-    ...(isDev && {
-      transport: {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          ignore: 'pid,hostname,time',
-          messageFormat: '{msg}',
-          translateTime: 'HH:MM:ss Z',
-        },
-      },
-    }),
+    // No pino-pretty transport - JSON logs only for reliability
     ...(!isDev && {
       redact: ['headers.authorization', 'headers.cookie', 'body.password'],
     }),
