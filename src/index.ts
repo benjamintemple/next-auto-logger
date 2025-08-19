@@ -53,7 +53,7 @@ interface ExtendedLogger {
   child: (obj: object) => ExtendedLogger;
 }
 
-let logger: ExtendedLogger;
+let logger: ExtendedLogger | null = null;
 
 // Create logger dynamically based on current environment
 const getLogger = () => {
@@ -113,8 +113,13 @@ const getLogger = () => {
   }
 };
 
-// Initialize logger
-logger = getLogger();
+// Lazy logger initialization function
+const ensureLogger = () => {
+  if (!logger) {
+    logger = getLogger();
+  }
+  return logger;
+};
 
 // Configuration interface
 export interface LoggerConfig {
@@ -242,10 +247,10 @@ const logEvent = async (event: RequestEvent): Promise<void> => {
   // Transform log if transformer exists
   const finalEvent = globalConfig.transformLog ? globalConfig.transformLog(event) : event;
 
-  if (isServer() && logger) {
+  if (isServer()) {
     // Server-side: Log directly with Pino
     const level = finalEvent.event === 'request_error' ? 'error' : 'info';
-    (logger as any)[level](finalEvent);
+    (ensureLogger() as any)[level](finalEvent);
   } else if (!isServer()) {
     // Client-side: Send to server API only (will show in npm run dev:pretty)
     await sendToServerAPI(finalEvent);
@@ -263,16 +268,18 @@ export const createLogger = (config?: Partial<LoggerConfig>): UniversalLogger =>
     setupInterceptors();
   }
 
+  const actualLogger = ensureLogger();
+  
   return {
-    pino: isServer() ? logger : undefined,
+    pino: isServer() ? actualLogger : undefined,
     log: logEvent,
-    info: logger.info.bind(logger),
-    warn: logger.warn.bind(logger),
-    error: logger.error.bind(logger),
-    debug: logger.debug.bind(logger),
-    trace: logger.trace.bind(logger),
-    fatal: logger.fatal.bind(logger),
-    child: (obj: object) => logger.child(obj),
+    info: actualLogger.info.bind(actualLogger),
+    warn: actualLogger.warn.bind(actualLogger),
+    error: actualLogger.error.bind(actualLogger),
+    debug: actualLogger.debug.bind(actualLogger),
+    trace: actualLogger.trace.bind(actualLogger),
+    fatal: actualLogger.fatal.bind(actualLogger),
+    child: (obj: object) => actualLogger.child(obj),
     isServer: isServer(),
     environment: getEnvironment(),
   };
@@ -449,8 +456,8 @@ const setupAxiosInterceptor = () => {
 export const universalLogger = createLogger();
 
 // Legacy exports (maintaining compatibility with your existing code)
-export default logger;
-export { logger as pino };
+export default ensureLogger();
+export { ensureLogger as pino };
 
 /**
  * @param context.module - Required
@@ -459,7 +466,7 @@ export { logger as pino };
 export const createChildLogger = (context: LoggerContext): ExtendedLogger => {
   // Only create child loggers on server-side
   if (!isServer()) {
-    return logger; // Return the fallback logger on client
+    return ensureLogger(); // Return the fallback logger on client
   }
 
   if (isDev && !shouldLogModule(context.module)) {
@@ -476,7 +483,7 @@ export const createChildLogger = (context: LoggerContext): ExtendedLogger => {
     }),
   };
 
-  return logger.child(base);
+  return ensureLogger().child(base);
 };
 
 const shouldLogModule = (module: string): boolean => {
@@ -498,7 +505,7 @@ const createSilentLogger = (): ExtendedLogger =>
 export async function measureDuration<T>(
   label: string,
   fn: () => Promise<T> | T,
-  log: ExtendedLogger = logger
+  log: ExtendedLogger = ensureLogger()
 ): Promise<T> {
   const start = performance.now();
   try {
@@ -520,7 +527,7 @@ export async function measureDuration<T>(
 export async function measureDurationQuiet<T>(
   label: string,
   fn: () => Promise<T> | T,
-  log: ExtendedLogger = logger
+  log: ExtendedLogger = ensureLogger()
 ): Promise<{ result: T; durationMs: number }> {
   const start = performance.now();
   try {
