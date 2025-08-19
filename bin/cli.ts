@@ -1,5 +1,5 @@
 import { program } from 'commander';
-import inquirer from 'inquirer';
+import { input, confirm, select } from '@inquirer/prompts';
 import fs from 'fs';
 import path from 'path';
 import chalk from 'chalk';
@@ -113,14 +113,12 @@ program
       console.log('');
       
       try {
-        const installConfirm = await inquirer.prompt([{
-          type: 'confirm',
-          name: 'install',
+        const installConfirm = await confirm({
           message: `Install missing packages using ${packageManager}?`,
           default: true
-        }]);
+        });
 
-        if (installConfirm.install) {
+        if (installConfirm) {
           installPackages(packageManager, requiredPackages);
         } else {
           console.log(chalk.yellow('⚠️  Skipping package installation. You\'ll need to install them manually:'));
@@ -134,78 +132,78 @@ program
       console.log(chalk.green('✅ All required packages are already installed\n'));
     }
 
-    const answers = await inquirer.prompt([
-      {
-        type: 'list',
-        name: 'router',
-        message: 'Which Next.js router are you using?',
-        choices: [
-          'App Router (Next.js 13+) - Recommended',
-          'Pages Router (Legacy)'
-        ],
-        filter: (val) => val.startsWith('App') ? 'app' : 'pages',
-        default: 'App Router (Next.js 13+) - Recommended'
-      },
-      {
-        type: 'input',
-        name: 'apiPath',
-        message: 'API endpoint path for client logs:',
-        default: '/api/logs',
-        validate: (input) => {
-          if (!input.startsWith('/api/')) {
-            return 'Path must start with /api/';
-          }
-          if (input.includes(' ')) {
-            return 'Path cannot contain spaces';
-          }
-          return true;
+    const router = await select({
+      message: 'Which Next.js router are you using?',
+      choices: [
+        { name: 'App Router (Next.js 13+) - Recommended', value: 'app' },
+        { name: 'Pages Router (Legacy)', value: 'pages' }
+      ],
+      default: 'app'
+    });
+
+    const apiPath = await input({
+      message: 'API endpoint path for client logs:',
+      default: '/api/logs',
+      validate: (input) => {
+        if (!input.startsWith('/api/')) {
+          return 'Path must start with /api/';
         }
-      },
-      {
-        type: 'confirm',
-        name: 'autoInterceptors',
-        message: 'Enable automatic request interceptors?',
-        default: true,
-        suffix: chalk.gray('\n   📖 This automatically logs ALL fetch(), axios, React Query requests\n   ✅ Great for debugging and monitoring\n   ⚠️  Adds small performance overhead\n   🔧 You can disable this later in your code\n  ')
-      },
-      {
-        type: 'confirm',
-        name: 'includeHeaders',
-        message: 'Include request/response headers in logs?',
-        default: false,
-        when: (answers) => answers.autoInterceptors,
-        suffix: chalk.gray('\n   📖 Logs HTTP headers like User-Agent, Authorization, etc.\n   ✅ Helpful for debugging authentication issues\n   ⚠️  May log sensitive data (we auto-redact common secrets)\n   💾 Increases log size\n  ')
-      },
-      {
-        type: 'confirm',
-        name: 'includeBody',
-        message: 'Include request/response bodies in logs?',
-        default: false,
-        when: (answers) => answers.autoInterceptors,
-        suffix: chalk.gray('\n   📖 Logs the actual data being sent/received\n   ✅ Excellent for debugging API issues\n   ⚠️  Can log sensitive user data (passwords auto-redacted)\n   💾 Significantly increases log size\n   🚨 Only enable in development or staging\n  ')
-      },
-      {
-        type: 'list',
-        name: 'logLevel',
-        message: 'Default log level for production:',
-        choices: [
-          'info - Standard logging (recommended)',
-          'warn - Only warnings and errors', 
-          'error - Only errors',
-          'debug - Verbose logging (development only)'
-        ],
-        filter: (val) => val.split(' ')[0],
-        default: 'info - Standard logging (recommended)',
-        suffix: chalk.gray('\n   📖 Development always uses debug level with pretty printing\n   🏭 Production uses this level with structured JSON\n  ')
-      },
-      {
-        type: 'confirm',
-        name: 'createExample',
-        message: 'Create example usage file?',
-        default: true,
-        suffix: chalk.gray('\n   📖 Creates example.ts showing how to use the logger\n   ✅ Great for getting started quickly\n  ')
+        if (input.includes(' ')) {
+          return 'Path cannot contain spaces';
+        }
+        return true;
       }
-    ] as const);
+    });
+
+    const autoInterceptors = await confirm({
+      message: 'Enable automatic request interceptors?',
+      default: true
+    });
+    console.log(chalk.gray('\n   📖 This automatically logs ALL fetch(), axios, React Query requests\n   ✅ Great for debugging and monitoring\n   ⚠️  Adds small performance overhead\n   🔧 You can disable this later in your code\n'));
+
+    const includeHeaders = autoInterceptors ? await confirm({
+      message: 'Include request/response headers in logs?',
+      default: false
+    }) : false;
+    if (autoInterceptors) {
+      console.log(chalk.gray('\n   📖 Logs HTTP headers like User-Agent, Authorization, etc.\n   ✅ Helpful for debugging authentication issues\n   ⚠️  May log sensitive data (we auto-redact common secrets)\n   💾 Increases log size\n'));
+    }
+
+    const includeBody = autoInterceptors ? await confirm({
+      message: 'Include request/response bodies in logs?',
+      default: false
+    }) : false;
+    if (autoInterceptors) {
+      console.log(chalk.gray('\n   📖 Logs the actual data being sent/received\n   ✅ Excellent for debugging API issues\n   ⚠️  Can log sensitive user data (passwords auto-redacted)\n   💾 Significantly increases log size\n   🚨 Only enable in development or staging\n'));
+    }
+
+    const logLevelChoice = await select({
+      message: 'Default log level for production:',
+      choices: [
+        { name: 'info - Standard logging (recommended)', value: 'info' },
+        { name: 'warn - Only warnings and errors', value: 'warn' },
+        { name: 'error - Only errors', value: 'error' },
+        { name: 'debug - Verbose logging (development only)', value: 'debug' }
+      ],
+      default: 'info'
+    });
+    console.log(chalk.gray('\n   📖 Development always uses debug level with pretty printing\n   🏭 Production uses this level with structured JSON\n'));
+
+    const createExample = await confirm({
+      message: 'Create example usage file?',
+      default: true
+    });
+    console.log(chalk.gray('\n   📖 Creates example.ts showing how to use the logger\n   ✅ Great for getting started quickly\n'));
+
+    const answers = {
+      router,
+      apiPath,
+      autoInterceptors,
+      includeHeaders,
+      includeBody,
+      logLevel: logLevelChoice,
+      createExample
+    };
 
     console.log(chalk.blue('\n📁 Creating files...\n'));
 
@@ -215,7 +213,7 @@ program
       
       // Create example if requested
       if (answers.createExample) {
-        await createExample(answers);
+        await createExampleFile(answers);
       }
 
       // Create or update environment file
@@ -276,7 +274,7 @@ async function createApiHandler(answers: any) {
   }
 }
 
-async function createExample(answers: any) {
+async function createExampleFile(answers: any) {
   const template = getExampleTemplate(answers);
   const filePath = 'logger-example.ts';
   

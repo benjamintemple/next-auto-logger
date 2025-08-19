@@ -11,18 +11,17 @@ export default defineConfig([
     sourcemap: false,
     minify: false,
   },
-  // CLI build  
+  // CLI build as ESM
   {
     entry: ['bin/cli.ts'],
-    format: ['cjs'],
+    format: ['esm'],
     dts: false,
     outDir: 'dist',
-    outExtension: () => ({ js: '.cjs' }),
+    outExtension: () => ({ js: '.mjs' }),
     clean: false,
     splitting: false,
     sourcemap: false,
     minify: false,
-    shims: true,
     banner: {
       js: '#!/usr/bin/env node'
     }

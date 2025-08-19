@@ -56,7 +56,7 @@ jobs:
         test -f dist/api.cjs
         test -f dist/api.js
         test -f dist/api.d.ts
-        test -f dist/cli.cjs
+        test -f dist/cli.mjs
 
   deploy:
     needs: test

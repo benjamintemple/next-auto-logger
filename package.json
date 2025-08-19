@@ -1,13 +1,13 @@
 {
   "name": "next-auto-logger",
-  "version": "1.1.9",
+  "version": "1.1.10",
   "description": "Universal Pino-based request logger for Next.js - auto-detects client/server, pretty logs in dev, CloudWatch in production",
   "type": "module",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "next-auto-logger": "./dist/cli.cjs"
+    "next-auto-logger": "./dist/cli.mjs"
   },
   "exports": {
     ".": {
@@ -26,7 +26,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsup && chmod +x dist/cli.cjs",
+    "build": "tsup && chmod +x dist/cli.mjs",
     "dev": "tsup --watch",
     "test": "vitest",
     "test:run": "vitest run",
@@ -82,7 +82,8 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "chalk": "^5.3.0",
+    "@inquirer/prompts": "^7.8.3",
+    "chalk": "^5.6.0",
     "commander": "^11.0.0",
     "inquirer": "^12.9.3",
     "pino-pretty": "^13.1.1",
