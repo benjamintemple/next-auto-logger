@@ -409,7 +409,7 @@ function showSuccessMessage(answers: any  ) {
   
   console.log(chalk.blue('📚 Resources:'));
   console.log('   📖 Documentation: https://github.com/benjamintemple/next-auto-logger');
-  console.log('   ☁️  CloudWatch guide: https://docs.aws.amazon.com/AmazonCloudWatch/');
+  console.log('   ☁️  CloudWatch guide: https://docs.aws.amazon.com/cloudwatch/');
   console.log('   💬 Support: https://github.com/benjamintemple/next-auto-logger/issues');
   console.log('');
   

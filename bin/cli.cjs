@@ -501,7 +501,7 @@ function showSuccessMessage(answers) {
     "   📖 Documentation: https://github.com/benjamintemple/next-auto-logger"
   );
   console.log(
-    "   ☁️  CloudWatch guide: https://docs.aws.amazon.com/AmazonCloudWatch/"
+    "   ☁️  CloudWatch guide: https://docs.aws.amazon.com/cloudwatch/"
   );
   console.log(
     "   💬 Support: https://github.com/benjamintemple/next-auto-logger/issues"
